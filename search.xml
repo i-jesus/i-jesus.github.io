@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title><![CDATA[Java之设计模式浅谈]]></title>
+    <url>%2F2019%2F01%2F03%2FJava%E4%B9%8B%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%B5%85%E8%B0%88%2F</url>
+    <content type="text"><![CDATA[设计模式是解决问题的方案，学习现有的设计模式可以做到经验复用；使用设计模式可以重用代码，让代码更容易被他人理解，也保证了代码的可靠性。Java设计模式总体上分为三大类：创建型模式、结构型模式、行为型模式，而每一大类都细分有多种设计模式，每种模式都有相应的原理与之对应。 1. 单例模式（Singleton）1.1 单例模式的特点 单例类只能有一个实例； 单例类必须自己创建自己的唯一实例； 单例类必须给所有其他对象提供这一实例。 1.2 Java单例模式Java的单例模式实现方式有四种：饿汉模式、懒汉模式、静态内部类、枚举类；使用一个私有构造函数、一个私有静态变量以及一个公有静态函数来实现。 Ⅰ. 懒汉式——线程不安全懒汉式的私有静态单例被延迟实例化，当没有用到该类时将不会被实例化，达到节约资源的目的；缺点是如果多个线程同时访问可能导致单例被多次实例化。 123456789101112131415/** * 1、懒汉模式-线程不安全 */class Singleton01&#123; private static Singleton01 singleton; private Singleton01()&#123; &#125; public static Singleton01 getSingleton()&#123; if (null == singleton)&#123; singleton = new Singleton01(); &#125; return singleton; &#125;&#125; Ⅱ. 饿汉式——线程安全饿汉式是在类加载时直接实例化该单例类达到线程安全的目的，但这样直接实例化的方式失去了延迟实例化带来的节约资源的好处。 123456789101112/** * 2、饿汉模式-线程安全,不够节约资源 */class Singleton02&#123; private static Singleton02 singleton = new Singleton02(); private Singleton02()&#123; &#125; public static Singleton02 getSingleton()&#123; return singleton; &#125;&#125; Ⅲ. 懒汉式——线程安全只需要对获取单例的公有方法加锁，使得在一个时间点只能有一个线程进入该方法，从而避免了被多次实例化；但当一个线程进入该方法后，其他试图进入的线程都必须等待，这样会让线程阻塞时间过长，所以不推荐使用。 123456789101112131415/** * 3、懒汉模式-线程安全,会导致线程阻塞 */class Singleton03&#123; private static Singleton03 singleton; private Singleton03()&#123; &#125; public static synchronized Singleton03 getSingleton()&#123; if (null == singleton)&#123; singleton = new Singleton03(); &#125; return singleton; &#125;&#125; Ⅳ. 懒汉式双重校验锁——线程安全加锁操作只需要对实例化的那部分代码进行，双重校验锁先判断单例是否已经被实例化，如果没有被实例化，那么才对实例化语句进行加锁。 123456789101112131415161718192021222324252627/** * 4、双重校验锁-线程安全 * 1).判断是否被实例化，再对实例化语句加锁； * 2).内部再次进行判断是否实例化，并加锁； * 3).为单例对象添加采用 volatile 关键字修饰，禁止JVM的指令重排。 */class Singleton04&#123; private volatile static Singleton04 singleton; private Singleton04()&#123; // 防反射 if(null !=singleton)&#123; throw Exception(); &#125; &#125; public static Singleton04 getSingleton()&#123; if (null == singleton)&#123; synchronized (Singleton04.class)&#123; if (null == singleton)&#123; synchronized (Singleton04.class)&#123; singleton = new Singleton04(); &#125; &#125; &#125; &#125; return singleton; &#125;&#125; singleton 采用 volatile 关键字修饰也是很有必要的， singleton = new Singleton4(); 这段代码其实是分为三步执行： 为 singleton 分配内存空间 初始化 singleton 将 singleton 指向分配的内存地址 但是由于 JVM 具有指令重排的特性，执行顺序有可能变成 1&gt;3&gt;2。指令重排在单线程环境下不会出现问题，但是在多线程环境下会导致一个线程获得还没有初始化的实例。例如，线程 T1 执行了 1 和 3，此时 T2 调用 getSingleton() 后发现 singleton 不为空，因此返回 singleton，但此时 singleton 还未被初始化。 使用 volatile 可以禁止 JVM 的指令重排，保证在多线程环境下也能正常运行。 Ⅴ. 静态内部类实现当 Singleton 类加载时，静态内部类 SingletonHolder 没有被加载进内存。只有当调用 getUniqueInstance() 方法从而触发 SingletonHolder.INSTANCE 时 SingletonHolder 才会被加载，此时初始化 INSTANCE 实例，并且 JVM 能确保 INSTANCE 只被实例化一次。 这种方式不仅具有延迟初始化的好处，而且由 JVM 提供了对线程安全的支持。 12345678910111213141516/** * 5、静态内部类实现 */public class Singleton &#123; private Singleton() &#123; &#125; private static class SingletonHolder &#123; private static final Singleton INSTANCE = new Singleton(); &#125; public static Singleton getUniqueInstance() &#123; return SingletonHolder.INSTANCE; &#125;&#125; Ⅵ. 枚举类实现使用枚举来实现单实例控制会更加简洁，而且无偿地提供了序列化机制，并由JVM从根本上提供保障，可以防止反射攻击，绝对防止多次实例化，是更简洁、高效、安全的实现单例的方式。 123456789101112public enum Singleton &#123; /** * 定义一个枚举的元素，它就代表了Singleton的一个实例。 */ INSTANCE; /** * 单例可以有自己的操作 */ public void singletonOperation()&#123; //功能处理 &#125;&#125; 2. 责任链模式（Chain Of Responsibility）责任链模式是一种对象的行为模式。在责任链模式里，很多对象由每一个对象对其下家的引用而连接起来形成一条链。请求在这个链上传递，直到链上的某一个对象决定处理此请求。发出这个请求的客户端并不知道链上的哪一个对象最终处理这个请求，这使得系统可以在不影响客户端的情况下动态地重新组织和分配责任。 2.1 责任链模式的结构 抽象处理者(Handler)角色：定义出一个处理请求的接口。如果需要，接口可以定义 出一个方法以设定和返回对下家的引用。 具体处理者(ConcreteHandler)角色：具体处理者接到请求后，可以选择将请求处理掉，或者将请求传给下家。由于具体处理者持有对下家的引用，因此，如果需要，具体处理者可以访问下家。 2.2 Java责任链模式1234567891011121314/** * 抽象处理者角色 */public abstract class Handler &#123; //1.持有后继的责任对象 protected Handler successor; //2.构造处理对象并传入下家引用 public Handler(Handler successor) &#123; this.successor = successor; &#125; //3.示意处理请求的方法 protected abstract void handleRequest(Request request);&#125; 12345678910111213141516171819202122/** * 具体处理者角色1 */public class ConcreteHandler1 extends Handler &#123; //1.构造处理对象并传入下家引用，可以传入空值null public ConcreteHandler1(Handler successor) &#123; super(successor); &#125; //2.具体处理请求的方法 @Override protected void handleRequest(Request request) &#123; if (request.getType() == RequestType.TYPE1) &#123;//处理自己所能处理的请求 System.out.println(request.getName() + " is handle by ConcreteHandler1"); return; &#125; //3.判断是否有后继的责任对象，如果有，就转发请求给后继的责任对象。 if (successor != null) &#123; successor.handleRequest(request); &#125; &#125;&#125; 12345678910111213141516171819202122/** * 具体处理者角色2 */public class ConcreteHandler2 extends Handler &#123; //1.构造处理对象并传入下家引用，可以传入空值null public ConcreteHandler2(Handler successor) &#123; super(successor); &#125; //2.具体处理请求的方法 @Override protected void handleRequest(Request request) &#123; if (request.getType() == RequestType.TYPE2) &#123;//处理自己所能处理的请求 System.out.println(request.getName() + " is handle by ConcreteHandler2"); return; &#125; //3.判断是否有后继的责任对象，如果有，就转发请求给后继的责任对象。 if (successor != null) &#123; successor.handleRequest(request); &#125; &#125;&#125; 123456789101112131415161718192021222324/** * 请求 */public class Request &#123; private RequestType type; private String name; public Request(RequestType type, String name) &#123; this.type = type; this.name = name; &#125; public RequestType getType() &#123; return type; &#125; public String getName() &#123; return name; &#125;&#125; 123public enum RequestType &#123; TYPE1, TYPE2&#125; 1234567891011121314151617/** * 客户类 */public class Client &#123; public static void main(String[] args) &#123; //1.组装责任链 Handler handler1 = new ConcreteHandler1(null); Handler handler2 = new ConcreteHandler2(handler1); //2.构建请求 Request request1 = new Request(RequestType.TYPE1, "request1"); Request request2 = new Request(RequestType.TYPE2, "request2"); //3.处理请求 handler2.handleRequest(request1); handler2.handleRequest(request2); &#125;&#125; 123运行结果：request1 is handle by ConcreteHandler1request2 is handle by ConcreteHandler2 3. 迭代器模式（Iterator）迭代器模式又叫游标(Cursor)模式，是对象的行为模式。迭代器模式可以顺序地访问一个聚集中的元素而不必暴露聚集的内部表象（internal representation）。 3.1 迭代器模式的结构 抽象迭代子(Iterator)角色：此抽象角色定义出遍历元素所需的接口。 具体迭代子(ConcreteIterator)角色：此角色实现了Iterator接口，并保持迭代过程中的游标位置。 聚集(Aggregate)角色：此抽象角色给出创建迭代子(Iterator)对象的接口。 具体聚集(ConcreteAggregate)角色：实现了创建迭代子(Iterator)对象的接口，返回一个合适的具体迭代子实例。 客户端(Client)角色：持有对聚集及其迭代子对象的引用，调用迭代子对象的迭代接口，也有可能通过迭代子操作聚集元素的增加和删除。 3.2 Java迭代器模式1234567891011/** * 抽象迭代器角色类 */public interface Iterator&lt;Item&gt; &#123; Item next(); boolean hasNext(); //还可以定义一些其他迭代方法：移动到第一个元素、返回当前元素、是否为最后一个元素等等。&#125; 12345678910111213141516171819202122/** * 具体迭代器角色类 */public class ConcreteIterator&lt;Item&gt; implements Iterator &#123; private Item[] items; private int position = 0; public ConcreteIterator(Item[] items) &#123; this.items = items; &#125; @Override public Object next() &#123; return items[position++]; &#125; @Override public boolean hasNext() &#123; return position &lt; items.length; &#125;&#125; 1234567/** * 聚合类接口 */public interface Aggregate &#123; //工厂方法，创建相应迭代子对象的接口 Iterator createIterator();&#125; 12345678910111213141516171819/** * 具体聚合类 */public class ConcreteAggregate implements Aggregate &#123; private Integer[] items; //构造方法，构建（或传入）聚合对象的具体内容 public ConcreteAggregate() &#123; items = new Integer[10]; for (int i = 0; i &lt; items.length; i++) &#123; items[i] = i; &#125; &#125; @Override public Iterator createIterator() &#123; return new ConcreteIterator&lt;Integer&gt;(items); &#125;&#125; 12345678910111213/** * 客户类 */public class Client &#123; public static void main(String[] args) &#123; Aggregate aggregate = new ConcreteAggregate(); Iterator&lt;Integer&gt; iterator = aggregate.createIterator(); while (iterator.hasNext()) &#123; System.out.println(iterator.next()); &#125; &#125;&#125; 4. 模板方法模式（Template Method）模板方法模式是类的行为模式。准备一个抽象类，将部分逻辑以具体方法以及具体构造函数的形式实现，然后声明一些抽象方法来迫使子类实现剩余的逻辑。不同的子类可以以不同的方式实现这些抽象方法，从而对剩余的逻辑有不同的实现。这就是模板方法模式的用意。 4.1 模板方法模式的结构 抽象模板(Abstract Template)角色有如下责任： ■ 定义了一个或多个抽象操作，以便让子类实现。这些抽象操作叫做基本操作，它们是一个顶级逻辑的组成步骤。 ■ 定义并实现了一个模板方法。这个模板方法一般是一个具体方法，它给出了一个顶级逻辑的骨架，而逻辑的组成步骤在相应的抽象操作中，推迟到子类实现。顶级逻辑也有可能调用一些具体方法。 具体模板(Concrete Template)角色有如下责任： ■ 实现父类所定义的一个或多个抽象方法，它们是一个顶级逻辑的组成步骤。 ■ 每一个抽象模板角色都可以有任意多个具体模板角色与之对应，而每一个具体模板角色都可以给出这些抽象方法（也就是顶级逻辑的组成步骤）的不同实现，从而使得顶级逻辑的实现各不相同。 4.2 Java模板方法模式如下给出例子：冲咖啡和冲茶都有类似的流程，但是某些步骤会有点不一样，要求复用那些相同步骤的代码。 12345678910111213141516171819202122232425262728293031323334/** * 抽象模板角色类 */public abstract class CaffeineBeverage &#123; /** * 模板方法 */ final void prepareRecipe() &#123; boilWater(); brew(); pourInCup(); addCondiments(); &#125; /** * 基本方法的声明（泡） */ abstract void brew(); /** * 基本方法的声明（加料） */ abstract void addCondiments(); /** * 基本方法的声明（烧水） */ void boilWater() &#123; System.out.println("boilWater"); &#125; /** * 基本方法的声明（倒入杯中） */ void pourInCup() &#123; System.out.println("pourInCup"); &#125;&#125; 1234567891011121314/** * 具体模板角色类——泡咖啡 */public class Coffee extends CaffeineBeverage &#123; @Override void brew() &#123; System.out.println("Coffee.brew"); &#125; @Override void addCondiments() &#123; System.out.println("Coffee.addCondiments"); &#125;&#125; 1234567891011121314/** * 具体模板角色类——泡茶 */public class Tea extends CaffeineBeverage &#123; @Override void brew() &#123; System.out.println("Tea.brew"); &#125; @Override void addCondiments() &#123; System.out.println("Tea.addCondiments"); &#125;&#125;]]></content>
+      <categories>
+        <category>设计模式</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[ArrayList源码实现分析]]></title>
+    <url>%2F2019%2F01%2F03%2FArrayList%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0%E5%88%86%E6%9E%90%2F</url>
+    <content type="text"><![CDATA[一.认知ArrayList的底层是Object类的数组，默认长度是10,超过10后，长度变为原长度的1.5倍,可以简单的认为是一个动态数组；实际上ArrayList就是用数组实现的，长度不够时，调用copy方法，拷贝当前数组到一个新的长度更大的数组。 二.代码实现123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144package com.shsxt;public class MyArrayList &#123; //ArrayList的底层是Object类的数组 //实质：Object数组 private Object[] elementData; //数组大小 private int size; //默认初始长度是10 public MyArrayList()&#123; // 无参构造器，通过显式调用含参构造器 this(10); &#125; /* * 1.含参构造器 * 2.要对传入的初始量的合法性进行检测 * 3.通过新建数组实现 */ public MyArrayList(int initalCapacity)&#123; if(initalCapacity&lt;0)&#123; try&#123; throw new Exception(); //不是就抛异常 &#125;catch(Exception e)&#123; e.printStackTrace(); &#125; &#125; //新的长度为10的数组 elementData = new Object[initalCapacity]; &#125; public int size()&#123; /* * 返回数组大小 */ return size; &#125; //判断是否非空 public boolean isEmpty()&#123; return size == 0; &#125; //数组越界判断，是就抛异常 //index索引从0开始必定小于数组长度 public void rangeCheck(int index)&#123; if(index&lt;0 || index&gt;=size)&#123; try&#123; throw new Exception(); &#125;catch(Exception e)&#123; e.printStackTrace(); &#125; &#125; &#125; //扩展长度，在添加前提前判断一下数组的大小是否超过数组长度 public void ensureCapacity() &#123; if(size&gt;=elementData.length) &#123; //默认长度是10,超过10后，长度变为原长度的1.5倍。 // Object[] temp = new Object[elementData.length*3/2]; //elementData原数组 从0开始 temp新数组 从0开始 size数组大小 System.arraycopy(elementData, 0, temp, 0, size); elementData = temp; &#125; &#125; //添加元素 public boolean add(Object obj) &#123; /* * 添加对象（不指定位置） * 注意数组扩容 */ ensureCapacity(); elementData[size] = obj; size++; return true; &#125; /* * 插入操作（指定位置） * 1.下标合法性检查 * 2.数组容量检查、扩容 * 3.数组复制（原数组，开始下标，目的数组，开始下标，长度） */ public void add(int index, Object obj) &#123; rangeCheck(index); ensureCapacity(); System.arraycopy(elementData, index, elementData, index+1, size-index); elementData[index] = obj; size++; &#125; //根据索引获得相应元素 public Object get(int index) &#123; /* * 1.获取指定下标的对象 * 2.下标合法性检测 */ rangeCheck(index); return elementData[index]; &#125; /* * 1.将指定下标的对象改变 * 2.下标合法性检查 * 3.直接通过数组的赋值来实现改变 * 4.返回旧值 */ public Object set(int index, Object obj) &#123; rangeCheck(index); Object oldValue = elementData[index]; elementData[index] = obj; return oldValue; &#125; //根据索引删除元素 public void remove(int index) &#123; rangeCheck(index); ensureCapacity(); //把原数组的删掉的元素后面的元素往前移一位 System.arraycopy(elementData, index+1, elementData, index, size-index-1); size--; &#125; public boolean remove(Object obj)&#123; /* * 1.删除指定对象 * 2.通过遍历 * 3.equals的底层运用，找到下标，调用remove(int i) */ for(int i=0;i&lt;size;i++)&#123; if(get(i).equals(obj))&#123; //注意底层用的是equals不是“==” remove(i); &#125; break; &#125; return true; &#125;&#125; 三.代码测试123456789101112public static void main(String[] args) &#123; MyArrayList list=new MyArrayList(); list.add("a"); list.add("b"); System.out.println(list.size());//2 list.set(1,"d"); System.out.println(list.get(1));//d list.add(1, "c"); System.out.println(list.get(1));//c list.remove(1); System.out.println(list.get(1));//d&#125; 四.总结​ ArrayList是线性表，支持null元素，有顺序，元素可以重复，底层使用数组实现，所以优缺点与数组类似 （1）arrayLIst优点：​ 根据索引随机访问快，效率高(实现了RandomAccess接口)； ​ 根据下标遍历元素效率高； ​ 在数组的基础上封装了对元素的操作的方法（增删改）； ​ 可以自动扩容（可变的动态数组，拷贝当前数组到一个新的长度更大的数组体现,默认为每次扩容为原来的1.5倍）。 （2）arrayLIst缺点：​ 插入和删除的效率比较低（数组长度固定不变，插入数据时，需要一个新的数组，将原始数据复制到新的数组，删除也一样，删除后，后面的数据都会向前移动，大大降低了效率）； ​ arrayList的空间浪费（主要体现在在list列表的结尾预留一定的容量空间，也就是数组的长度）； ​ 线程不安全&gt; LinkedList概括的说，LinkedList 是线程不安全的，允许元素为null的双向链表，和ArrayList比，没有实现RandomAccess，随机访问元素速度较慢，因其底层数据结构是链表，所以可想而知，它的增删只需要移动指针即可，故时间效率较高。不需要批量扩容，也不需要预留空间，所以空间效率比ArrayList高。 ArrayList和LinkedList的大致区别： ​ 1.ArrayList是实现了基于动态数组的数据结构，LinkedList是基于链表结构。 ​ 2.对ArrayList和LinkedList而言，在列表末尾增加一个元素所花的开销都是固定的。对 ArrayList而言，主要是在内部数组中增加一项，指向所添加的元素，偶尔可能会导致对数组重新进行分配；而对LinkedList而言，这个开销是 统一的，分配一个内部Entry对象。 ​ 3.在ArrayList集合中添加或者删除一个元素时，当前的列表所所有的元素都会被移动；而LinkedList集合中添加或者删除一个元素的开销是固定的。 ​ 4.LinkedList集合不支持 高效的随机随机访问（RandomAccess），因为可能产生二次项的行为。 ​ 5.ArrayList的空间浪费主要体现在在list列表的结尾预留一定的容量空间，而LinkedList的空间花费则体现在它的每一个元素都需要消耗相当的空间。 所以在我们进行对元素的增删查操作的时候，进行 查操作时用ArrayList，进行增删操作的时候最好用LinkedList。ArrayList集合实现RandomAccess接口有何作用？为何LinkedList集合却没实现这接口？​ 周所周知ArrayList用for循环遍历比iterator迭代器遍历快，LinkedList用iterator迭代器遍历比for循环遍历快，而RandomAccess接口这个空架子的存在，是为了能够更好地判断集合是否ArrayList或者LinkedList(实现RandomAccess接口的List集合采用一般的for循环遍历，而未实现这接口则采用迭代器。)，从而能够更好选择更优的遍历方式，提高性能 ​ 详解测试：https://blog.csdn.net/weixin_39148512/article/details/79234817]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第五天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E4%BA%94%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[1.web 会话跟踪技术的理解​ 作用域 ​ session:一次会话 ​ 应用：保存登录的用户信息 为什么会出现web会话跟踪技术？？？ ​ 应用层：Http -超文本传输协议 无状态 1.0 1.1-支持有状态（实现？？？） ​ 无状态协议：客户端的一次请求 经过服务端处理完毕 交互即结束 Http 无状态协议带来的问题？？？-TCP ​ 服务算无法区分客户端的请求 属于哪一个客户端 ​ 比如 web 应用：用户登录如果采用无状态操作 ​ 每次请求-相应 每次用户信息 服务端均需要重新查 服务端如何解决 无状态协议下 识别不同的客户端？？？ ​ 使用web 会话跟踪技术-Cookie (客户端存储技术) ​ 当客户端第一次请求到达服务端时 服务端查询当前客户端是否携带SessionId 服务端内部通过一定加密算法生成唯一的SessionId 服务端存储 将SessionId 响应到客户端 客户端通过Cookie 进行存储 cookie信息不安全 支持的信息量比较小 敏感信息一般不会写入到Cookie Session 会话技术 ​ session 本质 Cookie session 信息存储到服务端 区分不同的会话 基于SessionId 会话应用场景？？？ ​ 用户登录-用户基本信息存储 ​ 用户登录成功后 查询用户权限信息存入Session 中（Shiro） ​ 单点登录（SSO）:Session 用户信息共享 ​ 1.Cookie 客户端实现 ​ 2.服务端共享Session 缓存Redis-SessionId Spring Session ​ 3.用户认证中心-token 什么是ORM ORM理解​]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第四天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E5%9B%9B%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[Student(S#,Sname,Sage,Ssex) 学生表Course(C#,Cname,T#) 课程表SC(S#,C#,score) 成绩表Teacher(T#,Tname) 教师表 1、查询每个学生选的所有课程成绩均小于60分的同学的学号、姓名； ​ select S#,Sname ​ from Student s ​ where S# not in ​ ( select distinct S# from SC sc where score&gt;60) Student(S#,Sname,Sage,Ssex) 学生表Course(C#,Cname,T#) 课程表SC(S#,C#,score) 成绩表Teacher(T#,Tname) 教师表 ​ select S#,Sname ​ from Student s ​ where S# in （ select S# from SC sc group by S# having max(score)&lt;60） 2、查询所有同学的学号、姓名、选课数、总成绩； MySQL Student(S#,Sname,Sage,Ssex) 学生表Course(C#,Cname,T#) 课程表SC(S#,C#,score) 成绩表Teacher(T#,Tname) 教师表 select sc.S#,s.Sname,count(sc.S#),sum(sc.score) from SC sc left join Student s on sc.S#=s.S# group by sc.S# select sc.S#,s.Sname,count(sc.C#),sum(sc.score) from SC sc,Student s where sc.S#=s.S# group by sc.S 3、查询至少有一门课与学号为“1001”的同学所学相同的同学的学号和姓名； Student(S#,Sname,Sage,Ssex) 学生表Course(C#,Cname,T#) 课程表SC(S#,C#,score) 成绩表Teacher(T#,Tname) 教师表 select distinct s.S#,s.Sname from SC sc01 , Student s where sc01.S#=s.S# and sc01.S# not in (‘1001’) and sc01.C# in ( select C# from SC sc02 where sc.S#=’1001’ ) ​​]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第三天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E4%B8%89%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[Student(S#,Sname,Sage,Ssex) 学生表Course(C#,Cname,T#) 课程表SC(S#,C#,score) 成绩表Teacher(T#,Tname) 教师表 ​​ 1、查询每位学生平均成绩大于60分的同学的学号和平均成绩； Student(S#,Sname,Sage,Ssex) 学生表Course(C#,Cname,T#) 课程表SC(S#,C#,score) 成绩表Teacher(T#,Tname) 教师表 ​ 刘豪杰：余攀 ​ select s.S#,avg(sc.score) from Student s left join SC sc on s.S#=sc.S# where avg(sc.score)&gt;60 ​ group by sc.S# 陈浩：宋吉 0 ​ select S#,avg(score) from SC where avg(score)&gt;60 group by S# 答案： select S#,avg(score) from SC group by S# having avg(score)&gt;60 Student(S#,Sname,Sage,Ssex) 学生表Course(C#,Cname,T#) 课程表SC(S#,C#,score) 成绩表Teacher(T#,Tname) 教师表 2、查询没学过“叶平”老师课的同学的学号、姓名； ### ​ from Course c ,Teacher t,SC sc,Student s where c. where t.Tname != ‘叶平’ select S# ,Sname from Student s where s.S# not in ( select distinct sc.S# from SC sc left join Course c on sc.C#=c.C# left join Teacher t on c.T#=t.T# where t.Tname =’叶平’ ) ​ 3、查询学过“001”并且也学过编号“002”课程的同学的学号、姓名； ​ select t1.S#,s.Sname from（select S# from SC sc where sc.C#=’001’) t1 ,（select S# from SC sc where sc.C#=’002’) t2 ,Student s where t1.S#=t2.S# and t1.S#=s.S# 4、查询每个学生选的所有课程成绩均小于60分的同学的学号、姓名；]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第七天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E4%B8%83%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[1.JDBC操作数据库步骤 获取连接 设置SQL参数 预处理 处理结果集 关闭连接 加载驱动 获取连接 设置SQL 获取PS 执行查询（更新） 处理结果集 关闭资源 2.HashMap 源码实现原理 ArrayLIst|LinedList|HashSet ​ 数组+链表 ​ 添加 ​ ​ 查询（get） 3.JSP Servlet 区别 ​ Jsp:本质 Servlet（执行编译后 .class） 页面展示 不建议编写JAVA代码 维护麻烦 ​ Servlet :后台逻辑代码 输出复杂 ​ ​]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第六天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E7%AC%AC%E5%85%AD%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[1.什么是ORM ,ORM理解 对象关系映射 ​ 解决面向对象语言 关系型数据库 不匹配问题 ​ 对象—-》表记录 ​ 实体类–》数据库表 ​ 属性–》表字段 ​ Mybatis Hibernate Speed Fremework ​ Mybatis :半自动化 需要提供SQL ​ Hibernate :全自动化 省去基本SQL ​ 对象映射到数据库表记录 ​ 对象属性]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第九天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E4%B9%9D%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[1.常见的运行期异常​ 空指针异常-参数未判空 ​ 类型转换异常-时间转换 ​ 算术运算异常-1/0 ​ 下标越界-数组访问越界 ​ 自定义运行期异常-BusiException ,ParamsException ​ 项目中抛出的异常通常为运行期异常：事物控制 Spring 捕捉的异常为运行期异常，进行事物回滚 运行期异常 2.http异常状态码​ 400 : 客户端异常 前台参数与后台参数类型不一致 ​ 405 : 请求方式不匹配 ​ 404:请求资源未找到 css js image 后台方法映射地址 ​ 500:服务端内部错误 service 业务代码逻辑错误 ​ 503:dubbo 应用 服务提供方 service 业务重启 代码修改 3.redis 支持的数据类型(结构)-常见的五种​ Set:集合 交集 并集 差集 ​ List:队列 消息处理 存储列表数据 双向队列 ​ String:理论上能够存储任意数据 基本key-value 手机号-验证码 自增操作 ip封锁 ​ Hash: 一个key 多个字段 相比string 存储数据时 暂用的存储空间较小 表记录 ​ SortedSet:Set 无序 引入权重对元素进行排序 4.Redis 的持久化-AOF&amp;RDB 各自优缺点​ AOF:追加命令 ​ RDB:快照存储]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第二天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E4%BA%8C%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[1.对Mvc思想理解 1.简化开发 便于管理项目 ​ 控制层-业务层-持久层 分离 ​ Model-View-Controller 为什么出现MVC思想？？？ ​ 页面展示 业务逻辑 数据处理 ​ 用户登录： ​ servlet处理登录表单-》接收表单参数–》判断参数合法性–》jdbc执行数据查询操作–》业务判断–》输出登录结果 整个过程均是在当前servelt 完成 ​ 缺陷：代码复用率较低 视图展示比较麻烦 维护麻烦 MVC 思想： ​ 1.视图层代码 （输出结果）–View (JSP+JSTL,Freemarker) ​ servlet 转发页面 展示登录结果 ​ 2.控制层 –Controller –(Servlet处理) ​ 业务逻辑控制(用户登录业务逻辑处理) ​ 三层架构： ​ 控制层-业务逻辑层-持久层 ​ 3.数据模型-Model Map|List|Java Bean ​ 登录结果数据模型-UserModel ​ 优点： 解耦 开发效率高 维护方便 提高系统扩展性 SpringMvc Mvc 思想体现 ​ 控制层层代码（Handler） MVC思想具体含义？？？ MVC 思想对于项目开发有何优势？ MVC框架？？？ 2.SpringMvc 请求执行流程？？？ ​ ​]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第八天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E5%85%AB%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[静态代理实现的三要素 1.1 实现共同接口 1.2 代理对象获取被代理对象引用 1.3 增强被代理对象的方法 ​ 婚庆公司 ​ 结婚接口 ​ 婚庆公司（代理角色）：实现结婚接口 持有真实角色引用 增强目标角色方法的功能 ​ 当事人（真实角色）：实现结婚接口 ​ 共同行为（接口） ​ 目标角色：实现行为接口 ​ 代理角色：与目标角色实现共同行为 持有目标角色的引用 增强目标角色的方法 ​ ​ 2.什么是正向代理 什么是反向代理 ​ 正向代理：代理客户端 VPN 访问google 代理的是客户端 服务端对客户端是可见的 ​ 反向代理：代理服务端 负载均衡 Nginx(Apache) 代理服务端 服务端对客户端不可见]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[面试第一天]]></title>
+    <url>%2F2019%2F01%2F03%2F%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98-%E7%AC%AC%E4%B8%80%E5%A4%A9%2F</url>
+    <content type="text"><![CDATA[1.SpringMvc 常用注解 ​ @ResponseBody:提供外界访问的接口 ​ @RequestMapping:配置url 地址 ​ @PathVariable:路径参数 ​ @RequestParam:参数注解 ​ @ModelAttribute:目标方法执行前执行该注解标注的方法 ​ @SessionAttribute:参数值存入session ​ @RequestBody ​ @GetMapping ​ @PostMapping ​ @PutMapping ​ @DeleteMapping ​ @JsonFormate ​ @DatetimeFormate 2.Spring IOC 的理解 ​ 为什么有IOC容器？？？ ​ IOC 是什么？？？ ​ IOC 技术实现原理？？？ ​ IOC 应用场景？？？ 方法重载与方法重写 重载 与重写概念？？？ 为什么出现重载 重写？？？ 重载发生在哪些场景 重写发生在那些场景？？？ 真实的案例：封装Base,Util 工具类？？？ 相同点：方法名相同 方法重写：继承时发生 方法签名一致 ​ 不同类 非静态 public protected 实现接口 方法重载：方法签名不同（方法签名：方法名，参数数量，类型）当前类 ​ 构造器 ，成员方法 ​ ​ ​ ​]]></content>
+      <categories>
+        <category>面试</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[起步]]></title>
+    <url>%2F2018%2F12%2F14%2Fhello-world%2F</url>
+    <content type="text"><![CDATA[Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any problems when using Hexo, you can find the answer in troubleshooting or you can ask me on GitHub. Quick StartCreate a new post1$ hexo new "My New Post" More info: Writing Run server1$ hexo server More info: Server Generate static files1$ hexo generate More info: Generating Deploy to remote sites1$ hexo deploy More info: Deployment]]></content>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+</search>
